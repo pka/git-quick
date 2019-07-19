@@ -1,5 +1,7 @@
 mod index;
 #[allow(dead_code)]
+mod path_util;
+#[allow(dead_code)]
 mod select;
 #[allow(dead_code)]
 mod theme;

@@ -2,13 +2,14 @@ use std::fs::{remove_file, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
+use crate::path_util::is_hidden;
 use app_dirs::{app_dir, get_app_dir, AppDataType, AppInfo};
 use dirs::home_dir;
 use walkdir::{DirEntry, WalkDir};
 
 const APP: AppInfo = AppInfo {
-    name: "git-global",
-    author: "peap",
+    name: "git-shell",
+    author: "pka",
 };
 const CACHE_FILE: &'static str = "repos.txt";
 
@@ -55,6 +56,7 @@ impl Index {
 
     /// Clears the cache of known git repos, forcing a re-scan on the next
     /// `get_repos()` call.
+    #[allow(dead_code)]
     pub fn clear_cache(&mut self) {
         if self.has_cache() {
             remove_file(&self.cache_file).expect("Failed to delete cache file.");
@@ -66,6 +68,11 @@ impl Index {
         self.cache_file.exists()
     }
 
+    /// Returns `true` if this entry should be included in scans.
+    fn filter_dirs(&self, entry: &DirEntry) -> bool {
+        entry.file_type().is_dir() && (!is_hidden(entry) || entry.file_name() == ".git")
+    }
+
     /// Walks the configured base directory, looking for git repos.
     fn find_repos(&self) -> Vec<Repo> {
         let mut repos = Vec::new();
@@ -73,23 +80,19 @@ impl Index {
             "Scanning for git repos under {}; this may take a while...",
             self.basedir.display()
         );
-        for entry in WalkDir::new(&self.basedir).into_iter()
-        // .filter_entry(|e| self.filter(e))
+        for entry in WalkDir::new(&self.basedir)
+            .follow_links(true)
+            .same_file_system(true)
+            .into_iter()
+            .filter_entry(|e| self.filter_dirs(e))
         {
-            match entry {
-                Ok(entry) => {
-                    if entry.file_type().is_dir() && entry.file_name() == ".git" {
-                        let parent_path =
-                            entry.path().parent().expect("Could not determine parent.");
-                        match parent_path.to_str() {
-                            Some(path) => {
-                                repos.push(path.to_string());
-                            }
-                            None => (),
-                        }
+            if let Ok(entry) = entry {
+                if entry.file_name() == ".git" {
+                    let parent_path = entry.path().parent().expect("Could not determine parent.");
+                    if let Some(path) = parent_path.to_str() {
+                        repos.push(path.to_string());
                     }
                 }
-                Err(_) => (),
             }
         }
         repos
