@@ -8,3 +8,6 @@ edition = "2018"
 
 [dependencies]
 console = ">=0.3.0, <1.0.0"
+app_dirs = "1.2"
+dirs = "1"
+walkdir = "2"
