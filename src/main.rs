@@ -6,16 +6,17 @@ mod select;
 #[allow(dead_code)]
 mod theme;
 
+use select::SelectCommand;
+use std::path::Path;
 use sublime_fuzzy::best_match;
 
-fn main() {
-    let mut index = index::Index::new();
-    let repos = index.get_repos();
-
-    let input = "RustTile";
+fn search(input: &String, repos: &Vec<String>) -> Vec<String> {
+    if input.is_empty() {
+        return repos.clone();
+    }
     let mut matches = repos
         .iter()
-        .map(|repo| (repo, best_match(input, repo)))
+        .map(|repo| (repo, best_match(&input, repo)))
         .filter(|(_r, m)| m.is_some())
         .map(|(r, m)| (r, m.unwrap()))
         .collect::<Vec<_>>();
@@ -24,13 +25,42 @@ fn main() {
         println!("{:?}", matches[i]);
     }
 
-    let items = matches.iter().map(|(r, _m)| r).collect::<Vec<_>>();
-    let selection = select::Select::with_theme(&theme::ColorfulTheme::default())
-        .with_prompt("Select repo")
-        .default(0)
-        .paged(true)
-        .items(&items[..])
-        .interact()
-        .unwrap();
-    println!("Selected: {}", repos[selection]);
+    let items = matches
+        .iter()
+        .map(|(r, _m)| r.clone().clone())
+        .collect::<Vec<_>>();
+    items
+}
+
+fn main() {
+    let mut index = index::Index::new();
+    let repos = index.get_repos();
+
+    let mut input = String::new();
+    loop {
+        let items = search(&input, &repos);
+        match select::Select::with_theme(&theme::ColorfulTheme::default())
+            .default(0)
+            .paged(true)
+            .items(&items[..])
+            .interact_opt()
+        {
+            Ok(SelectCommand::CharInput { ch }) => match ch {
+                '\u{7f}' => {
+                    input.pop();
+                }
+                _ => {
+                    input.push(ch);
+                }
+            },
+            Ok(SelectCommand::Select { row }) => {
+                println!("{}", items[row]);
+                // cwd is only kept if script is started in same shell (source)
+                let _ = std::env::set_current_dir(&Path::new(&items[row]));
+                break;
+            }
+            Ok(SelectCommand::Quit) => break,
+            _ => {}
+        }
+    }
 }
