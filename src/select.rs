@@ -29,6 +29,7 @@ pub struct Select<'a> {
     clear: bool,
     theme: &'a Theme,
     paged: bool,
+    page_size: usize,
 }
 
 impl<'a> Select<'a> {
@@ -46,11 +47,15 @@ impl<'a> Select<'a> {
             clear: true,
             theme: theme,
             paged: false,
+            page_size: 0,
         }
     }
     /// Enables or disables paging
     pub fn paged(&mut self, val: bool) -> &mut Select<'a> {
         self.paged = val;
+        if self.paged {
+            self.page_size = 10;
+        }
         self
     }
     /// Sets the clear behavior of the menu.
@@ -126,7 +131,7 @@ impl<'a> Select<'a> {
         let mut page = 0;
         let mut capacity = self.items.len();
         if self.paged {
-            capacity = term.size().0 as usize - 1;
+            capacity = self.page_size.min(term.size().0 as usize - 1);
         }
         let pages = (self.items.len() / capacity) + 1;
         let mut render = TermThemeRenderer::new(term, self.theme);
