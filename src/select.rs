@@ -6,16 +6,25 @@ use crate::theme::{get_default_theme, SelectionStyle, TermThemeRenderer, Theme};
 
 use console::{Key, Term};
 
+use sublime_fuzzy::Match;
+
+pub struct Item {
+    pub text: String,
+    pub item_key: usize,
+    pub match_info: Match,
+}
+
 pub enum SelectCommand {
     CharInput { ch: char },
-    Select { row: usize },
+    Select { item_key: usize },
+    Command { ch: char, item_key: usize },
     Quit,
 }
 
 /// Renders a selection menu.
 pub struct Select<'a> {
     default: usize,
-    items: Vec<String>,
+    items: Vec<Item>,
     prompt: Option<String>,
     clear: bool,
     theme: &'a Theme,
@@ -59,15 +68,15 @@ impl<'a> Select<'a> {
     }
 
     /// Add a single item to the selector.
-    pub fn item(&mut self, item: &str) -> &mut Select<'a> {
-        self.items.push(item.to_string());
+    pub fn item(&mut self, item: Item) -> &mut Select<'a> {
+        self.items.push(item);
         self
     }
 
     /// Adds multiple items to the selector.
-    pub fn items<T: ToString>(&mut self, items: &[T]) -> &mut Select<'a> {
+    pub fn items(&mut self, items: Vec<Item>) -> &mut Select<'a> {
         for item in items {
-            self.items.push(item.to_string());
+            self.items.push(item);
         }
         self
     }
@@ -127,7 +136,7 @@ impl<'a> Select<'a> {
         }
         let mut size_vec = Vec::new();
         for items in self.items.iter().as_slice() {
-            let size = &items.len();
+            let size = &items.text.len();
             size_vec.push(size.clone());
         }
         loop {
@@ -139,7 +148,7 @@ impl<'a> Select<'a> {
                 .take(capacity)
             {
                 render.selection(
-                    item,
+                    &item.text,
                     if sel == idx {
                         SelectionStyle::MenuSelected
                     } else {
@@ -197,16 +206,25 @@ impl<'a> Select<'a> {
                         render.clear()?;
                     }
                     if let Some(ref prompt) = self.prompt {
-                        render.single_prompt_selection(prompt, &self.items[sel])?;
+                        render.single_prompt_selection(prompt, &self.items[sel].text)?;
                     }
-                    return Ok(SelectCommand::Select { row: sel });
+                    return Ok(SelectCommand::Select {
+                        item_key: self.items[sel].item_key,
+                    });
                 }
 
-                Key::Char(ch) => {
+                Key::Char(ch) if ch.is_alphanumeric() => {
                     if self.clear {
                         render.clear()?;
                     }
                     return Ok(SelectCommand::CharInput { ch });
+                }
+
+                Key::Char(ch) if !ch.is_alphanumeric() => {
+                    return Ok(SelectCommand::Command {
+                        ch,
+                        item_key: self.items[sel].item_key,
+                    });
                 }
                 _ => {}
             }
