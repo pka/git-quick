@@ -203,6 +203,9 @@ impl<'a> Select<'a> {
                 }
 
                 Key::Char(ch) => {
+                    if self.clear {
+                        render.clear()?;
+                    }
                     return Ok(SelectCommand::CharInput { ch });
                 }
                 _ => {}

@@ -6,6 +6,7 @@ mod select;
 #[allow(dead_code)]
 mod theme;
 
+use console::Style;
 use select::SelectCommand;
 use std::path::Path;
 use sublime_fuzzy::best_match;
@@ -21,13 +22,23 @@ fn search(input: &String, repos: &Vec<String>) -> Vec<String> {
         .map(|(r, m)| (r, m.unwrap()))
         .collect::<Vec<_>>();
     matches.sort_by(|a, b| b.1.score().cmp(&a.1.score()));
-    for i in 0..3.min(matches.len()) {
-        println!("{:?}", matches[i]);
-    }
 
+    let highlight = Style::new().on_blue();
     let items = matches
         .iter()
-        .map(|(r, _m)| r.clone().clone())
+        .map(|(r, m)| {
+            let mut outstr = String::new();
+            let mut idx = 0;
+            for (match_idx, len) in m.continuous_matches() {
+                outstr.push_str(&r[idx..match_idx]);
+                idx = match_idx + len;
+                outstr.push_str(&format!("{}", highlight.apply_to(&r[match_idx..idx])));
+            }
+            if idx < r.len() {
+                outstr.push_str(&r[idx..r.len()]);
+            }
+            outstr
+        })
         .collect::<Vec<_>>();
     items
 }
