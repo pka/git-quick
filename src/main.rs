@@ -6,7 +6,7 @@ mod select;
 #[allow(dead_code)]
 mod theme;
 
-use console::Style;
+use console::{Style, Term};
 use select::{Item, SelectCommand};
 use std::io::{BufRead, BufReader, Error, ErrorKind};
 use std::path::Path;
@@ -61,6 +61,7 @@ fn search(input: &String, repos: &Vec<String>) -> Vec<Item> {
 
 fn exec_command(dir: &str, cmd: &str, args: &[&str]) -> Result<(), Error> {
     std::env::set_current_dir(&Path::new(dir))?;
+    let term = Term::stdout();
     let cmd_style = Style::new().cyan();
     println!(
         "{}",
@@ -84,6 +85,7 @@ fn exec_command(dir: &str, cmd: &str, args: &[&str]) -> Result<(), Error> {
             println!("{}", line);
         });
 
+    term.move_cursor_up(numlines)?;
     Ok(())
 }
 
@@ -91,14 +93,18 @@ fn main() {
     let mut index = index::Index::new();
     let repos = index.get_repos();
 
+    // User input for search
     let mut input = String::new();
+    let term = Term::stderr();
     loop {
         let items = search(&input, &repos);
-        match select::Select::with_theme(&theme::ColorfulTheme::default())
+        let theme = theme::ColorfulTheme::default();
+        let mut select = select::Select::with_theme(&theme);
+        match select
             .default(0)
             .paged(true)
             .items(items)
-            .interact_opt()
+            .interact_on_opt(&term)
         {
             Ok(SelectCommand::CharInput { ch }) => match ch {
                 _ => {
@@ -113,10 +119,12 @@ fn main() {
                 '\u{10}' => {
                     // ctrl-p
                     exec_command(&repos[item_key], "git", &["pull"]).unwrap();
+                    select.reset_cursor(&term);
                 }
                 '\u{13}' => {
                     // ctrl-s
                     exec_command(&repos[item_key], "git", &["status"]).unwrap();
+                    select.reset_cursor(&term);
                 }
                 '\u{1b}' => {
                     // home

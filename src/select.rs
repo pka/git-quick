@@ -86,6 +86,13 @@ impl<'a> Select<'a> {
         self
     }
 
+    // Move cursor up according to current number of items
+    pub fn reset_cursor(&mut self, term: &Term) -> &mut Select<'a> {
+        let capacity = self.capacity(term);
+        term.move_cursor_up(self.items.len().min(capacity)).unwrap();
+        self
+    }
+
     /// Prefaces the menu with a prompt.
     ///
     /// When a prompt is set the system also prints out a confirmation after
@@ -126,13 +133,18 @@ impl<'a> Select<'a> {
         self._interact_on(term, true)
     }
 
-    /// Like `interact` but allows a specific terminal to be set.
-    fn _interact_on(&self, term: &Term, allow_quit: bool) -> io::Result<SelectCommand> {
-        let mut page = 0;
+    fn capacity(&self, term: &Term) -> usize {
         let mut capacity = self.items.len();
         if self.paged {
             capacity = self.page_size.min(term.size().0 as usize - 1);
         }
+        capacity
+    }
+
+    /// Like `interact` but allows a specific terminal to be set.
+    fn _interact_on(&self, term: &Term, allow_quit: bool) -> io::Result<SelectCommand> {
+        let mut page = 0;
+        let capacity = self.capacity(term);
         let pages = (self.items.len() / capacity) + 1;
         let mut render = TermThemeRenderer::new(term, self.theme);
         let mut sel = self.default;
