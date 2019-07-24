@@ -1,8 +1,10 @@
+use git2;
 use std::fs::{remove_file, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
 use crate::path_util::is_hidden;
+use crate::repo::num_hours_since_last_commit;
 use app_dirs::{app_dir, get_app_dir, AppDataType, AppInfo};
 use dirs::home_dir;
 use walkdir::{DirEntry, WalkDir};
@@ -54,6 +56,27 @@ impl Index {
         self.get_cached_repos()
     }
 
+    pub fn get_repos_by_last_commit(&mut self) -> Vec<Repo> {
+        let repos = self.get_repos();
+        let mut repos_with_last_commit = repos
+            .iter()
+            .enumerate()
+            .map(|(i, p)| {
+                if let Ok(repo) = git2::Repository::open(&p) {
+                    (i, num_hours_since_last_commit(&repo))
+                } else {
+                    (i, i64::max_value())
+                }
+            })
+            .collect::<Vec<_>>();
+        repos_with_last_commit.sort_by(|a, b| a.1.cmp(&b.1));
+        // return sorted repo list
+        repos_with_last_commit
+            .iter()
+            .map(|(i, _)| repos[*i].clone())
+            .collect()
+    }
+
     /// Clears the cache of known git repos, forcing a re-scan on the next
     /// `get_repos()` call.
     #[allow(dead_code)]
@@ -90,7 +113,9 @@ impl Index {
                 if entry.file_name() == ".git" {
                     let parent_path = entry.path().parent().expect("Could not determine parent.");
                     if let Some(path) = parent_path.to_str() {
-                        repos.push(path.to_string());
+                        if git2::Repository::open(&path).is_ok() {
+                            repos.push(path.to_string());
+                        }
                     }
                 }
             }

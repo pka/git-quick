@@ -8,8 +8,13 @@ edition = "2018"
 
 [dependencies]
 app_dirs = "1.2"
+chrono = "0.4"
 console = ">=0.3.0, <1.0.0"
 dirs = "1"
 memchr = "2.1"
 sublime_fuzzy = "0.5"
 walkdir = "2"
+
+[dependencies.git2]
+version = "0.8"
+default-features = false  # without SSH/HTTPS/Curl

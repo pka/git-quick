@@ -1,6 +1,7 @@
 mod index;
 #[allow(dead_code)]
 mod path_util;
+mod repo;
 #[allow(dead_code)]
 mod select;
 #[allow(dead_code)]
@@ -91,7 +92,7 @@ fn exec_command(dir: &str, cmd: &str, args: &[&str]) -> Result<(), Error> {
 
 fn main() {
     let mut index = index::Index::new();
-    let repos = index.get_repos();
+    let repos = index.get_repos_by_last_commit();
 
     // User input for search
     let mut input = String::new();
