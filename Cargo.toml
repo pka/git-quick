@@ -1,10 +1,22 @@
 [package]
-name = "git-shell"
+name = "git-quick"
 version = "0.1.0"
 authors = ["Pirmin Kalberer <pka@sourcepole.ch>"]
 edition = "2018"
+description = "Navigate between git repositories and issue basic commands."
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+homepage = "https://github.com/pka/git-quick"
+repository = "https://github.com/pka/git-quick"
+
+license = "MIT"
+readme = "README.md"
+
+keywords = ["git"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "git-quick"
+doc = false
 
 [dependencies]
 app_dirs = "1.2"
