@@ -97,6 +97,7 @@ fn main() {
     // User input for search
     let mut input = String::new();
     let term = Term::stderr();
+    term.clear_screen().unwrap();
     loop {
         let items = search(&input, &repos);
         let theme = theme::ColorfulTheme::default();
@@ -130,6 +131,7 @@ fn main() {
                 '\u{1b}' => {
                     // home
                     input.clear(); // reset search
+                    term.clear_screen().unwrap();
                 }
                 _ => {
                     println!("Unknown command key {:?}", ch);
